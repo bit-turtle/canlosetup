@@ -1,0 +1,14 @@
+[Unit]
+Description=CANLosetup CAN HAT bringup for @CAN_HAT_TYPE
+After=network-pre.target systemd-modules-load.service
+Wants=network-pre.target
+Before=robot.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/canlosetup.sh
+
+[Install]
+WantedBy=multi-user.target
+
