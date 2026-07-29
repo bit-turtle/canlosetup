@@ -10,6 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download Latest Systemcore LLUpdate Image
+        id: llupdate
         uses: robinraju/release-downloader@v1
         with:
           repository: "limelightvision/systemcore-os-public"
@@ -34,9 +35,9 @@ jobs:
 
       - name: Modify Images With CANlosetup
         run: |
-          llupdate=( "$GITHUB_WORKSPACE/*.llupdate" ); llupdate="${llupdate[0]}"
+          llupdate="${{ fromJson(steps.llupdate.outputs.downloaded_files)[0] }}"
           llupdatename="${llupdate##*/}"
-          osimage=( "$GITHUB_WORKSPACE/*.img" ); osimage="${osimage[0]}"
+          osimage="${{ fromJson(steps.osimage.outputs.downloaded_files)[0] }}"
           osimagename="${osimage##*/}"
           for canconf in ./config/*.txt; do
             [ -f "$canconf" ] || break
