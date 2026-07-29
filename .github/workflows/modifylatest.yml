@@ -42,7 +42,7 @@ jobs:
           osimagename="${osimage##*/}"
           for canconf in ./config/*.txt; do
             echo "Found config $canconf"
-            can="${canconf%%.*}"
+            can="$(basename $canconf .txt)"
             echo "Modifying Systemcore Image for $can"
             echo "* $can" >> "$GITHUB_WORKSPACE/body.md"
             canllupdate="${llupdate%%.*}-${can}.llupdate"
