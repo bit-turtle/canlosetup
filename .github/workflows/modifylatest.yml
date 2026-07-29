@@ -1,0 +1,57 @@
+name: Modify Latest Systemcore Images and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  modify-latest-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Latest Systemcore LLUpdate Image
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: "limelightvision/systemcore-os-public"
+          latest: true
+          fileName: "*.llupdate"
+      - name: Download Latest Full Systemcore Image
+        id: osimage
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: "limelightvision/systemcore-os-public"
+          latest: true
+          fileName: "*.zip"
+          extract: true
+        
+      - name: Setup
+        run: |
+          mkdir "$GITHUB_WORKSPACE/release"
+          sudo chmod +x ./canlosetup.sh
+          echo "# CANlosetup ${{ steps.osimage.outputs.release_name }}" > "$GITHUB_WORKSPACE/body.md"
+          echo "Tag Name: ${{ steps.osimage.outputs.tag_name }}" >> "$GITHUB_WORKSPACE/body.md"
+          echo "## CAN HATs" >> "$GITHUB_WORKSPACE/body.md"
+
+      - name: Modify Images With CANlosetup
+        run: |
+          llupdate="($GITHUB_WORKSPACE/*.llupdate)"; llupdate="${llupdate[0]}"
+          llupdatename="${llupdate##*/}"
+          osimage="($GITHUB_WORKSPACE/*.img)"; osimage="${osimage[0]}"
+          osimagename="${osimage##*/}"
+          for canconf in ./config/*.txt; do
+            [ -f "$canconf" ] || break
+            can="${canconf%%.*}"
+            echo "* $can" >> "$GITHUB_WORKSPACE/body.md"
+            canllupdate="${llupdate%%.*}-${can}.llupdate"
+            canosimage="${osimage%%}"
+            cp "$llupdate" "$GITHUB_WORKSPACE/release/${can}-$llupdatename"
+            cp "$osimage" "$GITHUB_WORKSPACE/release/${can}-$osimagename"
+            sudo ./canlosetup llupdate "$GITHUB_WORKSPACE/release/${can}-$llupdatename" "$can" 449
+            sudo ./canlosetup osimage "$GITHUB_WORKSPACE/release/${can}-$osimagename" "$can" 449
+          done
+      
+      - name: Release Modified Images
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "$GITHUB_WORKSPACE/release/*"
+          bodyFile: "$GITHUB_ACTIONS/body.md"
