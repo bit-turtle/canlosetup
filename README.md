@@ -22,7 +22,7 @@ Use a Linux VM to run the tool on Mac
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to learn how to add support for your own CAN HATs!
 
 ### Team Number
-CANlosetup can embed your team's team number into a Systemcore image, or you can omit it to keep it as the default team "0"
+CANlosetup can embed your team's team number into a Systemcore image, or you can omit it to keep it as the default team `0`
 
 ## Directory Structure
 * `config`: DeviceTree configurations for CAN HATs
