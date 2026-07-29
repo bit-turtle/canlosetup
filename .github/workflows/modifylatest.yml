@@ -41,7 +41,7 @@ jobs:
           osimage="${osimage%%-*}.img"
           osimagename="${osimage##*/}"
           for canconf in ./config/*.txt; do
-            [ -f "$canconf" ] || break
+            echo "Found config $canconf"
             can="${canconf%%.*}"
             echo "Modifying Systemcore Image for $can"
             echo "* $can" >> "$GITHUB_WORKSPACE/body.md"
@@ -49,7 +49,9 @@ jobs:
             canosimage="${osimage%%}"
             cp "$llupdate" "$GITHUB_WORKSPACE/release/${can}-$llupdatename"
             cp "$osimage" "$GITHUB_WORKSPACE/release/${can}-$osimagename"
+            echo "Modifying LLUpdate..."
             sudo -E ./canlosetup.sh llupdate "$GITHUB_WORKSPACE/release/${can}-$llupdatename" "$can" 449
+            echo "Modifying OSImage"
             sudo -E ./canlosetup.sh osimage "$GITHUB_WORKSPACE/release/${can}-$osimagename" "$can" 449
           done
       
