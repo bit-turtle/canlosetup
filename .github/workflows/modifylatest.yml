@@ -48,8 +48,8 @@ jobs:
             canosimage="${osimage%%}"
             cp "$llupdate" "$GITHUB_WORKSPACE/release/${can}-$llupdatename"
             cp "$osimage" "$GITHUB_WORKSPACE/release/${can}-$osimagename"
-            sudo ./canlosetup llupdate "$GITHUB_WORKSPACE/release/${can}-$llupdatename" "$can" 449
-            sudo ./canlosetup osimage "$GITHUB_WORKSPACE/release/${can}-$osimagename" "$can" 449
+            sudo -E ./canlosetup.sh llupdate "$GITHUB_WORKSPACE/release/${can}-$llupdatename" "$can" 449
+            sudo -E ./canlosetup.sh osimage "$GITHUB_WORKSPACE/release/${can}-$osimagename" "$can" 449
           done
       
       - name: Release Modified Images
