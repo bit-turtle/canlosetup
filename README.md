@@ -15,6 +15,7 @@ CANlosetup is only compatible with Linux because it relies on Linux loop devices
 
 ### Currently Supported CAN HATs
 * `waveshare2ch`: [Waveshare 2-CH CAN HAT](https://www.waveshare.com/wiki/2-CH_CAN_HAT)
+
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to learn how to add support for your own CAN HATs!
 
 ### Team Number
