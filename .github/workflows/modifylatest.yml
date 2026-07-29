@@ -61,6 +61,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "$GITHUB_WORKSPACE/release/*"
-          bodyFile: "$GITHUB_ACTIONS/body.md"
+          bodyFile: "$GITHUB_WORKSPACE/body.md"
           tag: "canlosetup-${{ steps.osimage.outputs.tag_name }}"
           name: "CANLosetup ${{ steps.osimage.outputs.release_name }}"
