@@ -38,6 +38,7 @@ jobs:
           llupdate="${{ fromJson(steps.llupdate.outputs.downloaded_files)[0] }}"
           llupdatename="${llupdate##*/}"
           osimage="${{ fromJson(steps.osimage.outputs.downloaded_files)[0] }}"
+          osimage="${osimage%%-*}.img"
           osimagename="${osimage##*/}"
           for canconf in ./config/*.txt; do
             [ -f "$canconf" ] || break
