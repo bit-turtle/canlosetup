@@ -34,9 +34,9 @@ jobs:
 
       - name: Modify Images With CANlosetup
         run: |
-          llupdate="($GITHUB_WORKSPACE/*.llupdate)"; llupdate="${llupdate[0]}"
+          llupdate=( "$GITHUB_WORKSPACE/*.llupdate" ); llupdate="${llupdate[0]}"
           llupdatename="${llupdate##*/}"
-          osimage="($GITHUB_WORKSPACE/*.img)"; osimage="${osimage[0]}"
+          osimage=( "$GITHUB_WORKSPACE/*.img" ); osimage="${osimage[0]}"
           osimagename="${osimage##*/}"
           for canconf in ./config/*.txt; do
             [ -f "$canconf" ] || break
