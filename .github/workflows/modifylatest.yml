@@ -25,12 +25,12 @@ jobs:
           fileName: "*.zip"
           extract: true
         
-      - name: Setup
+      - name: Setup CANlosetup
         run: |
           mkdir "$GITHUB_WORKSPACE/release"
           sudo chmod +x ./canlosetup.sh
           echo "# CANlosetup ${{ steps.osimage.outputs.release_name }}" > "$GITHUB_WORKSPACE/body.md"
-          echo "Tag Name: ${{ steps.osimage.outputs.tag_name }}" >> "$GITHUB_WORKSPACE/body.md"
+          echo "Release Tag: [${{ steps.osimage.outputs.tag_name }}](https://github.com/LimelightVision/systemcore-os-public/releases/tag/${{ steps.osimage.outputs.tag_name }})" >> "$GITHUB_WORKSPACE/body.md"
           echo "## CAN HATs" >> "$GITHUB_WORKSPACE/body.md"
 
       - name: Modify Images With CANlosetup
@@ -45,6 +45,8 @@ jobs:
             can="$(basename $canconf .txt)"
             echo "Modifying Systemcore Image for $can"
             echo "* $can" >> "$GITHUB_WORKSPACE/body.md"
+            echo "  * ${can}-${llupdatename}: Systemcore Update Image" >> "$GITHUB_WORKSPACE/body.md"
+            echo "  * ${can}-${osimagename}: Systemcore Full OS Image" >> "$GITHUB_WORKSPACE/body.md"
             canllupdate="${llupdate%%.*}-${can}.llupdate"
             canosimage="${osimage%%}"
             cp "$llupdate" "$GITHUB_WORKSPACE/release/${can}-$llupdatename"
@@ -60,3 +62,5 @@ jobs:
         with:
           artifacts: "$GITHUB_WORKSPACE/release/*"
           bodyFile: "$GITHUB_ACTIONS/body.md"
+          tag: "canlosetup-${{ steps.osimage.outputs.tag_name }}"
+          name: "CANLosetup ${{ steps.osimage.outputs.release_name }}"
