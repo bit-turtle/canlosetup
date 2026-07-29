@@ -2,7 +2,10 @@
 A Systemcore image modification tool powered by losetup
 
 ## OS Compatibility
-CANlosetup is only compatible with Linux because it relies on Linux loop devices.
+CANlosetup is only compatible with Linux because it relies on Linux loop devices.  
+
+Use WSL2 to run the tool on Windows  
+Use a Linux VM to run the tool on Mac
 
 ## Usage
 `./canlosetup.sh <Systemcore Image Type> <Systemcore Image> [CAN HAT Type] [Team Number]`
