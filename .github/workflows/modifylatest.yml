@@ -1,0 +1,71 @@
+name: Modify Latest Systemcore Images and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  modify-latest-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Latest Systemcore LLUpdate Image
+        id: llupdate
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: "limelightvision/systemcore-os-public"
+          latest: true
+          fileName: "*.llupdate"
+      - name: Download Latest Full Systemcore Image
+        id: osimage
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: "limelightvision/systemcore-os-public"
+          latest: true
+          fileName: "*.zip"
+          extract: true
+        
+      - name: Setup CANlosetup
+        run: |
+          mkdir "$GITHUB_WORKSPACE/release"
+          sudo chmod +x ./canlosetup.sh
+          echo "# CANlosetup Modified Systemcore Images" > "$GITHUB_WORKSPACE/body.md"
+          echo "Release Tag: [${{ steps.osimage.outputs.tag_name }}](https://github.com/LimelightVision/systemcore-os-public/releases/tag/${{ steps.osimage.outputs.tag_name }})" >> "$GITHUB_WORKSPACE/body.md"
+          echo "## CAN HATs" >> "$GITHUB_WORKSPACE/body.md"
+
+      - name: Modify Images With CANlosetup
+        run: |
+          llupdate="${{ fromJson(steps.llupdate.outputs.downloaded_files)[0] }}"
+          llupdatename="${llupdate##*/}"
+          osimagezip="${{ fromJson(steps.osimage.outputs.downloaded_files)[0] }}"
+          osimage="${osimagezip%%-*}.img"
+          osimagename="${osimage##*/}"
+          osimagezipname="${osimagezip##*/}"
+          for canconf in ./config/*.txt; do
+            echo "Found config $canconf"
+            can="$(basename $canconf .txt)"
+            echo "Modifying Systemcore Image for $can"
+            echo "* \`$can\`" >> "$GITHUB_WORKSPACE/body.md"
+            echo "  * \`${can}-${llupdatename}\`: Systemcore Update Image" >> "$GITHUB_WORKSPACE/body.md"
+            echo "  * \`${can}-${osimagezipname}\`: Systemcore Full OS Image" >> "$GITHUB_WORKSPACE/body.md"
+            canllupdate="${llupdate%%.*}-${can}.llupdate"
+            canosimage="${osimage%%}"
+            cp "$llupdate" "$GITHUB_WORKSPACE/release/${can}-$llupdatename"
+            cp "$osimage" "$GITHUB_WORKSPACE/release/${can}-$osimagename"
+            echo "Modifying LLUpdate..."
+            sudo -E ./canlosetup.sh llupdate "$GITHUB_WORKSPACE/release/${can}-$llupdatename" "$can" 449
+            echo "Modifying OSImage"
+            sudo -E ./canlosetup.sh osimage "$GITHUB_WORKSPACE/release/${can}-$osimagename" "$can" 449
+            zip "$GITHUB_WORKSPACE/release/${can}-$osimagezipname" "$GITHUB_WORKSPACE/release/${can}-$osimagename"
+            rm "$GITHUB_WORKSPACE/release/${can}-$osimagename"
+          done
+      
+      - name: Release Modified Images
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "${{github.workspace}}/release/*"
+          bodyFile: "${{github.workspace}}/body.md"
+          tag: "canlosetup-${{ steps.osimage.outputs.tag_name }}"
+          name: "CANLosetup ${{ steps.osimage.outputs.release_name }}"
