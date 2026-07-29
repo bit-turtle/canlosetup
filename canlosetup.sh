@@ -134,9 +134,7 @@ if [ -v OSImage ]; then
 	lolog() {
 		echo "$1" >> "$(lo Boot0)/canlosetup.txt"
 		echo "$1" >> "$(lo BootA)/canlosetup.txt"
-		if [ ! -v NoRootB ]; then
-			echo "$1" >> "$(lo BootB)/canlosetup.txt"
-		fi
+		echo "$1" >> "$(lo BootB)/canlosetup.txt"
 	}
 elif [ -v LLUpdate ]; then
 	lomount Boot boot
