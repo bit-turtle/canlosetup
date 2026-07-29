@@ -43,6 +43,7 @@ jobs:
           for canconf in ./config/*.txt; do
             [ -f "$canconf" ] || break
             can="${canconf%%.*}"
+            echo "Modifying Systemcore Image for $can"
             echo "* $can" >> "$GITHUB_WORKSPACE/body.md"
             canllupdate="${llupdate%%.*}-${can}.llupdate"
             canosimage="${osimage%%}"
