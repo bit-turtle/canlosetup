@@ -1,4 +1,5 @@
 # Waveshare 2-CH CAN HAT config
+[all]
 dtparam=spi=on
 dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
 dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
