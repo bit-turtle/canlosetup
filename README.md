@@ -2,13 +2,21 @@
 A Systemcore image modification tool powered by losetup
 
 ## OS Compatibility
-CANlosetup is only compatible with Linux because it relies on Linux loop devices.  
+CANlosetup is only compatible with Linux because it relies on Linux loop devices.
 
-Use WSL2 to run the tool on Windows  
+Use WSL2 to run the tool on Windows
 Use a Linux VM to run the tool on Mac
 
+## Dependencies
+* `losetup`, `mount`, and `umount`
+  - Most likely already installed on Linux
+* `sed`
+  - Required when adding support for a CAN HAT
+* `zstd`, `jq`, `tar`, `wc`, `cut`, and `sha256sum`
+  - Required when editing llupdate images
+
 ## Usage
-`./canlosetup.sh <Systemcore Image Type> <Systemcore Image> [CAN HAT Type] [Team Number]`
+`./canlosetup.sh <Systemcore Image Type> <Systemcore Image> <CAN HAT Type> [Team Number]`
 
 ### Supported Systemcore Image Types
 * `osimage`: `.img` Systemcore OS image
@@ -18,6 +26,7 @@ Use a Linux VM to run the tool on Mac
 
 ### Currently Supported CAN HATs
 * `waveshare2ch`: [Waveshare 2-CH CAN HAT](https://www.waveshare.com/wiki/2-CH_CAN_HAT)
+* `none`: Does not modify Systemcore CAN system
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to learn how to add support for your own CAN HATs!
 

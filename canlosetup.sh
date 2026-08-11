@@ -2,18 +2,64 @@
 # SystemcorePi CANlosetup image modification tool
 ScriptDir="$(dirname "$(realpath "$0")")"
 MountPrefix="/mnt/lo"
+echo -e "\033[1;32mCANlosetup Systemcore Image Modification Tool\033[0m"
 pushd .
+
+# Errors and warnings
+function error() {	# $1 = Error Code, $2 = Error Message
+	echo -e "\033[1;31mERROR:\033[0m $2"
+	# Abort
+	popd
+	if [ -f ${MountPrefix}* ]; then
+		umount -f ${MountPrefix}*
+		rm -r ${MountPrefix}*
+	fi
+	if [ -v OSImage ]; then
+		if [ -f "$LosetupMount" ]; then
+			losetup -d "$LosetupMount"
+		fi
+		mv "$LosetupImage" "$SystemcoreImage"
+		warning "Systemcore OS image may have been modified incorrectly!"
+	fi
+	if [ -v LLUpdate ]; then
+		if [ -f "$LosetupBoot" ]; then
+			losetup -d "$LosetupBoot"
+		fi
+		if [ -f "$LosetupRootFS" ]; then
+			losetup -d "$LosetupRootFS"
+		fi
+		rm -r "${LLUpdateDir}/"
+		info "Systemcore OS update was not modified"
+	fi
+	echo -e "\033[1;31mFailed to modify $SystemcoreImage!"
+	exit $1
+}
+function error_check() {	# $? = Return Code, $1 = Error Code, $2 = Error Message
+	if [ $? -ne 0 ]; then
+		error $1 "$2"
+	fi
+}
+function warning() {	# $1 = Warning Message
+	echo -e "\033[1;33mWARNING:\033[0m $1"
+}
+function info() {	# $1 = Info Message
+	echo -e "\033[1;34mINFO:\033[0m $1"
+}
+
+# Running on Linux?
+if [ "$(uname)" != "Linux" ]; then
+	error 255 "CANLosetup is only compatible with Linux! Try using a Linux VM"
+fi
 
 # Can losetup?
 if [[ $EUID -ne 0 ]]; then
-   echo "Only root can losetup!" 
-   exit 1
+   error 1 "Only root can losetup!"
 fi
 
 # Can help?
-if [ $# -lt 2 ] || [ $# -gt 4 ]; then
-	echo "Usage: $0 <Systemcore Image Type> <Systemcore Image> [CAN HAT Type] [Team Number]"
-	exit 2
+if [ $# -lt 3 ] || [ $# -gt 4 ]; then
+	info "Usage: $0 <Systemcore Image Type> <Systemcore Image> [CAN HAT Type] [Team Number]"
+	error 2 "Missing arguments, read the README for a list of valid options"
 fi
 
 # Process Arguments
@@ -24,47 +70,78 @@ elif [ "$SystemcoreImageType" == "llupdate" ]; then
 	LLUpdate=1
 	command -v jq
 	if [ $? -ne 0 ]; then
-		echo "jq is required to modify LLUpdate images!"
-		exit 2
+		error 51 "jq is required to modify LLUpdate images!"
+	fi
+	command -v zstd
+	if [ $? -ne 0 ]; then
+		error 52 "zstd is required to modify LLUpdate images!"
+	fi
+	command -v wc
+	if [ $? -ne 0 ]; then
+		error 53 "wc is required to modify LLUpdate images!"
+	fi
+	command -v cut
+	if [ $? -ne 0 ]; then
+		error 54 "cut is required to modify LLUpdate images!"
+	fi
+	command -v sha256sum
+	if [ $? -ne 0 ]; then
+		error 55 "sha256sum is required to modify LLUpdate images!"
 	fi
 else
-	echo "Unknown Systemcore image type $SystemcoreImageType! Valid types are \"osimage\" and \"llupdate\"."
-	exit 3
+	error 5 "Unknown Systemcore image type $SystemcoreImageType! Valid types are \"osimage\" and \"llupdate\"."
 fi
 SystemcoreImage="$2"
-CANHAT="$3"
-TeamNumber="$4"
-
-# Can image?
+# Can find image?
 if [ ! -f "$SystemcoreImage" ]; then
-	echo "Missing Systemcore image $SystemcoreImage!"
+	error 6 "Missing Systemcore image $SystemcoreImage!"
 	exit 4
 fi
+CANHAT="$3"
+if [ "$CANHAT" == "none" ]; then
+	NoCANHAT=1
+	info "Not including CAN HAT support"
+# Does CANHAT config exist?
+elif [ ! -f "${ScriptDir}/config/${CANHAT}.txt" ] || [ ! -f "${ScriptDir}/service/${CANHAT}.sh" ]; then
+	error 7 "CAN HAT ${CANHAT} is not supported, check out CONTRIBUTING.md to learn how to add support"
+else
+	command -v sed
+	if [ $? -ne 0 ]; then
+		error 50 "sed is required to create CAN HAT systemd service"
+	fi
+fi
+TeamNumber="$4"
 
 # Mount losetup
 if [ -v OSImage ]; then
 	LosetupImage="${SystemcoreImage}.losetup.img"
 	mv "$SystemcoreImage" "$LosetupImage"
-	echo "Losetup image..."
+	info "Losetup image..."
 	LosetupMount=$(losetup -Pf --show "$LosetupImage")
-	echo "Losetup on $LosetupMount"
+	error_check 8 "Failed to losetup OSImage!"
+	info "Losetup on $LosetupMount"
 	sleep 1	# Wait for losetup
 elif [ -v LLUpdate ]; then
 	LLUpdateDir="${SystemcoreImage}.losetup.dir"
 	mkdir "$LLUpdateDir"
-	echo "Unpacking LLUpdate image..."
+	info "Unpacking LLUpdate image..."
 	tar -xf "$SystemcoreImage" -C "$LLUpdateDir"
+	error_check 70 "Failed to unpack LLUpdate image!"
 	cd "$LLUpdateDir"
-	echo "Decompressing Boot image..."
+	info "Decompressing Boot image..."
 	zstd -d boot.img.zst
+	error_check 9 "Failed to decompress Boot image!"
 	rm boot.img.zst
-	echo "Decompressing RootFS image..."
+	info "Decompressing RootFS image..."
 	zstd -d rootfs.img.zst
+	error_check 10 "Failed to decompress Root image!"
 	rm rootfs.img.zst
-	echo "Losetup images..."
+	info "Losetup images..."
 	LosetupBoot=$(losetup -Pf --show "boot.img")
+	error_check 11 "Failed to losetup Boot image!"
 	LosetupRootFS=$(losetup -Pf --show "rootfs.img")
-	echo "Losetup on $LosetupBoot and $LosetupRootFS"
+	error_check 12 "Failed to losetup Root image!"
+	info "Losetup on $LosetupBoot and $LosetupRootFS"
 fi
 
 # Modify Systemcore image
@@ -76,7 +153,8 @@ lomount() { # $1 = Parition Name, $2 = Partition ID
 	if [ -v OSImage ]; then
 		mount "${LosetupMount}$2" "$(lo $1)" 2>/dev/null
 		if [ $? -ne 0 ]; then
-			echo "Failed to mount OSImage partition $2"
+			warning "Failed to mount OSImage partition $2"
+			rmdir "$(lo $1)"
 			return 1
 		fi
 	elif [ -v LLUpdate ]; then
@@ -85,44 +163,49 @@ lomount() { # $1 = Parition Name, $2 = Partition ID
 		elif [ $2 == "rootfs" ]; then
 			mount "${LosetupRootFS}" "$(lo $1)"
 		else
-			echo "Invalid LLUpdate mount $2! Valid mounts are \"boot\" and \"rootfs\"."
-			exit 5
+			error 13 "Invalid LLUpdate mount $2! Valid mounts are \"boot\" and \"rootfs\"."
 		fi
 	fi
-	echo "Mounted $1"
+	info "Mounted $1"
 }
 loumount() { # $1 = Partition name
 	umount "$(lo $1)"
 	rmdir "$(lo $1)"
-	echo "Unmounted $1"
+	info "Unmounted $1"
 }
 
 # Mount Partitions
 canlosetup_modified_message() { # $1 = Partition name
 	if [ ! -f "$(lo $1)/canlosetup.txt" ]; then
 		echo "This Systemcore image was modified using the CANlosetup tool" > "$(lo $1)/canlosetup.txt"
-		echo "Inserted Feature History: (Lower entries override higher entries)" >> "$(lo $1)/canlosetup.txt"	
+		echo "Inserted Feature History: (Lower entries override higher entries)" >> "$(lo $1)/canlosetup.txt"
 	fi
 }
 backup_config() { # $1 = Partition name
 	if [ ! -f "$(lo $1)/config.txt.old" ]; then
-		echo "Backing up $1 config..."
+		info "Backing up $1 config..."
 		cp "$(lo $1)/config.txt" "$(lo $1)/config.txt.old"
+		error_check 15 "Failed to back up $1 config!"
 	else
-		echo "Partition $1 previously modified by canlosetup!"
-		echo "Restoring $1 config..."
+		warning "Partition $1 previously modified by canlosetup!"
+		info "Restoring $1 config..."
 		cp "$(lo $1)/config.txt.old" "$(lo $1)/config.txt"
+		error_check 16 "Failed to restore $1 config!"
 	fi
 }
 if [ -v OSImage ]; then
 	lomount Boot0 p1
+	error_check 21 "Failed to mount Boot0!"
 	lomount BootA p2
+	error_check 22 "Failed to mount BootA!"
 	lomount BootB p3
+	error_check 23 "Failed to mount BootB!"
 	lomount RootA p5
+	error_check 24 "Failed to mount RootA!"
 	lomount RootB p6
 	if [ $? -ne 0 ]; then
 		NoRootB=1
-		echo "RootB is not present on this image"
+		info "RootB is not present on this image"
 	else
 		unset NoRootB
 	fi
@@ -133,30 +216,35 @@ if [ -v OSImage ]; then
 	canlosetup_modified_message BootB
 	lolog() {
 		echo "$1" >> "$(lo Boot0)/canlosetup.txt"
+		error_check 17 "Failed to write log to Boot0!"
 		echo "$1" >> "$(lo BootA)/canlosetup.txt"
+		error_check 18 "Failed to write log to BootA!"
 		echo "$1" >> "$(lo BootB)/canlosetup.txt"
+		error_check 19 "Failed to write log to BootB!"
 	}
 elif [ -v LLUpdate ]; then
 	lomount Boot boot
+	error_check 25 "Failed to mount Boot!"
 	lomount Root rootfs
+	error_check 26 "Failed to mount RootFS!"
 	backup_config Boot
 	canlosetup_modified_message Boot
 	lolog() {
 		echo "$1" >> "$(lo Boot)/canlosetup.txt"
+		error_check 20 "Failed to write log to Boot!"
 	}
 fi
 
 # Insert CAN HAT config
 CANHATConfig="$ScriptDir/config/$CANHAT.txt"
-if [ ! -f "$CANHATConfig" ]; then
-	echo "No CAN HAT config for $CANHAT!"
-	echo "Add a config at $CANHATConfig!"
+if [ -v NoCANHAT ]; then
+	warning "No CAN HAT config included"
 	lolog "CAN HAT Config: NONE"
 else
 	locanconf() { # $1 = Partition name
 		# Append CAN HAT config
 		cat "$CANHATConfig" >> "$(lo $1)/config.txt"
-		echo "Added CAN HAT config to $1"
+		info "Added CAN HAT config to $1"
 	}
 	if [ -v OSImage ]; then
 		locanconf BootA
@@ -169,9 +257,8 @@ fi
 
 # Insert CAN HAT service
 CANHATService="$ScriptDir/service/$CANHAT.sh"
-if [ ! -f "$CANHATService" ]; then
-	echo "No CAN HAT service for $CANHAT!"
-	echo "Add a service at $CANHATService!"
+if [ -v NoCANHAT ]; then
+	warning "No CAN HAT service included"
 	lolog "CAN HAT Service: NONE"
 else
 	locanservice() { # $1 = Partition name
@@ -192,7 +279,7 @@ else
 		ln -sfn "/etc/systemd/system/canlosetup.service" "$(lo $1)/etc/systemd/system/multi-user.target.wants/canlosetup.service"
 		# Disable default CAN service
 		rm -f "$(lo $1)/etc/systemd/system/default.target.wants/limelight_canbusprocess.service"
-		echo "Added CAN HAT service to $1"
+		info "Added CAN HAT service to $1"
 	}
 	if [ -v OSImage ]; then
 		locanservice RootA
@@ -207,8 +294,7 @@ fi
 
 # Insert Team Number
 if [[ ! $TeamNumber =~ ^[0-9]+$ ]]; then
-	echo "Invalid or no team number provided!"
-	echo "Using default team number!"
+	warning "Invalid or no team number provided, keeping default team number"
 	lolog "Team Number: DEFAULT"
 else
 	function embed_team_number() { # $1 = Partition name
@@ -242,17 +328,20 @@ elif [ -v LLUpdate ]; then
 	loumount Root
 	losetup -d "$LosetupBoot"
 	losetup -d "$LosetupRootFS"
-	echo "Compressing Boot image..."
+	info "Compressing Boot image..."
 	zstd boot.img
-	echo "Compressing RootFS image..."
+	error_check 60 "Failed to compress Boot image!"
+	info "Compressing RootFS image..."
 	zstd rootfs.img
-	echo "Updating LLUpdate manifest..."
+	error_check 61 "Failed to compress RootFS image!"
+	info "Updating LLUpdate manifest..."
 	bootSize=$(wc -c < boot.img) rootfsSize=$(wc -c < rootfs.img)
 	bootCompressedSize=$(wc -c < boot.img.zst) rootfsCompressedSize=$(wc -c < rootfs.img.zst)
 	boot256=$(sha256sum boot.img | cut -d' ' -f1) rootfs256=$(sha256sum rootfs.img | cut -d' ' -f1)
 	rm boot.img rootfs.img
 	edit_manifest() { # $1 = Key, $2 = Value
 		echo $(jq "$1 = $2" manifest.json) > manifest.json
+		error_check 62 "Failed to update manifest!"
 	}
 	manifest_format=$(jq ".format" manifest.json)
 	case "$manifest_format" in
@@ -265,21 +354,21 @@ elif [ -v LLUpdate ]; then
 			edit_manifest ".rootfs.sha256" "\"$rootfs256\""
 			;;
 		*)
-			echo "Unknown manifest format $manifest_format!"
-			echo "Check out the new structure:"
+			warning "Unknown manifest format $manifest_format!"
+			info "Check out the new structure:"
 			echo "-------- manifest.json --------"
 			cat manifest.json
 			echo "-------- manifest.json --------"
-			echo "Add suport for the new structure at $1!"
-			echo "Skipping LLUpdate manifest update!"
-			echo "LLUpdate will most likely be invalid!"
+			info "Add suport for the new structure at $1!"
+			error 30 "Unknown manifest format!"
 			;;
 	esac
-	echo "Repackaging LLUpdate..."
+	info "Repackaging LLUpdate..."
 	cd ..
 	tar -cvf "$SystemcoreImage" --owner="runner" --group="runner" --mode="644" -C "$LLUpdateDir" manifest.json boot.img.zst rootfs.img.zst
+	error_check 31 "Failed to repackage llupdate!"
 	rm -r "$LLUpdateDir"
 fi
 popd
 unset OSImage LLUpdate
-echo "Modified $SystemcoreImage!"
+echo -e "\033[1;32mSucessfully modified $SystemcoreImage!\033[0m"
