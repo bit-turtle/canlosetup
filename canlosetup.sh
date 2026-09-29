@@ -299,7 +299,7 @@ if [[ ! $TeamNumber =~ ^[0-9]+$ ]]; then
 else
 	function embed_team_number() { # $1 = Partition name
 		echo "$TeamNumber" > "$(lo $1)/etc/team_number.txt"
-		echo "Added team number $TeamNumber to $1"
+		info "Added team number $TeamNumber to $1"
 	}
 	if [ -v OSImage ]; then
 		embed_team_number RootA
