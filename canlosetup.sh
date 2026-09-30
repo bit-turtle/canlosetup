@@ -31,6 +31,7 @@ function error() {	# $1 = Error Code, $2 = Error Message
 		rm -r "${LLUpdateDir}/"
 		info "Systemcore OS update was not modified"
 	fi
+	unset OSImage LLUpdate
 	echo -e "\033[1;31mFailed to modify $SystemcoreImage!"
 	exit $1
 }
