@@ -280,6 +280,8 @@ else
 		ln -sfn "/etc/systemd/system/canlosetup.service" "$(lo $1)/etc/systemd/system/multi-user.target.wants/canlosetup.service"
 		# Disable default CAN service
 		rm -f "$(lo $1)/etc/systemd/system/default.target.wants/limelight_canbusprocess.service"
+		# Remove default CAN service file
+		rm -f "$(lo $1)/etc/systemd/system/limelight_canbusprocess.service"
 		info "Added CAN HAT service to $1"
 	}
 	if [ -v OSImage ]; then
