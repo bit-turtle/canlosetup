@@ -17,6 +17,7 @@ jobs:
         with:
           repository: "limelightvision/systemcore-os-public"
           latest: true
+          preRelease: true
           fileName: "*.llupdate"
       - name: Download Latest Full Systemcore Image
         id: osimage
@@ -24,6 +25,7 @@ jobs:
         with:
           repository: "limelightvision/systemcore-os-public"
           latest: true
+          preRelease: true
           fileName: "*.zip"
           extract: true
         
