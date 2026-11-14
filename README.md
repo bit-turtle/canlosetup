@@ -1,5 +1,5 @@
 # CANlosetup
-A Systemcore image modification tool powered by losetup
+A Systemcore image modification tool powered by losetup, most recently tested on Beta 18
 
 ## OS Compatibility
 CANlosetup is only compatible with Linux because it relies on Linux loop devices.
@@ -12,11 +12,12 @@ Use a Linux VM to run the tool on Mac
   - Most likely already installed on Linux
 * `sed`
   - Required when adding support for a CAN HAT
+  - Required when modifying the Wifi configuration
 * `zstd`, `jq`, `tar`, `wc`, `cut`, and `sha256sum`
   - Required when editing llupdate images
 
 ## Usage
-`./canlosetup.sh <Systemcore Image Type> <Systemcore Image> <CAN HAT Type> [Team Number]`
+`./canlosetup.sh <Systemcore Image Type> <Systemcore Image> <CAN HAT Type> [Team Number] [Wifi SSID] [Wifi Password]`
 
 ### Supported Systemcore Image Types
 * `osimage`: `.img` Systemcore OS image
@@ -32,6 +33,9 @@ Read [`CONTRIBUTING.md`](CONTRIBUTING.md) to learn how to add support for your o
 
 ### Team Number
 CANlosetup can embed your team's team number into a Systemcore image, or you can omit it to keep it as the default team `0`
+
+### Wifi Configuration
+When both the Wifi SSID and the Wifi Password are provided the script will modity the Wifi configuration to something you'll remember, just don't set it to "PASSWORD", or you will feel the full wrath of Systemcore OS version 18. Note: Systemcore OS may append a code to the end of the SSID
 
 ## Directory Structure
 * `config`: DeviceTree configurations for CAN HATs

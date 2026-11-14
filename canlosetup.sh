@@ -7,34 +7,29 @@ pushd .
 
 # Errors and warnings
 function error() {	# $1 = Error Code, $2 = Error Message
-	echo -e "\033[1;31mERROR:\033[0m $2"
+	echo -e "\033[1;31mERROR $1:\033[0m $2"
 	# Abort
 	popd
-	if [ -f ${MountPrefix}* ]; then
-		umount -f ${MountPrefix}*
-		rm -r ${MountPrefix}*
-	fi
 	if [ -v OSImage ]; then
-		if [ -f "$LosetupMount" ]; then
-			losetup -d "$LosetupMount"
-		fi
-		mv "$LosetupImage" "$SystemcoreImage"
-		warning "Systemcore OS image may have been modified incorrectly!"
+		mv "${LosetupImage}" "${SystemcoreImage}"
+		losetup -d "${LosetupMount}"
 	fi
 	if [ -v LLUpdate ]; then
-		if [ -f "$LosetupBoot" ]; then
-			losetup -d "$LosetupBoot"
-		fi
-		if [ -f "$LosetupRootFS" ]; then
-			losetup -d "$LosetupRootFS"
-		fi
-		rm -r "${LLUpdateDir}/"
-		info "Systemcore OS update was not modified"
+		rm -r "${LLUpdateDir}"
+		losetup -d "${LosetupBoot}"
+		losetup -d "${LosetupRoot}"
 	fi
+	umount -f ${MountPrefix}*
+	rm -r ${MountPrefix}*
 	unset OSImage LLUpdate
+	warning "Systemcore OS image may have been modified incorrectly!"
 	echo -e "\033[1;31mFailed to modify $SystemcoreImage!"
 	exit $1
 }
+function sigint_handler() {
+	error 127 "Termination imminent"
+}
+trap sigint_handler SIGINT
 function error_check() {	# $? = Return Code, $1 = Error Code, $2 = Error Message
 	if [ $? -ne 0 ]; then
 		error $1 "$2"
@@ -58,9 +53,9 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Can help?
-if [ $# -lt 3 ] || [ $# -gt 4 ]; then
-	info "Usage: $0 <Systemcore Image Type> <Systemcore Image> [CAN HAT Type] [Team Number]"
-	error 2 "Missing arguments, read the README for a list of valid options"
+if [ $# -lt 3 ] || [ $# -gt 6 ]; then
+	info "Usage: $0 <Systemcore Image Type> <Systemcore Image> <CAN HAT Type> [Team Number] [Wifi SSID] [Wifi Password]"
+	error 2 "Missing arguments (or maybe too many arguments), read the README for a list of valid options"
 fi
 
 # Process Arguments
@@ -112,6 +107,20 @@ else
 	fi
 fi
 TeamNumber="$4"
+WifiSSID="$5"
+WifiPassword="$6"
+if [[ "$WifiSSID" != "" ]]; then
+	command -v sed
+	if [ $? -ne 0 ]; then
+		error 27 "sed is required to modify the Wifi configuration"
+	fi
+	if [ "${#WifiPassword}" -lt 8 ]; then
+		error 71 "Wifi passwords must be at least 8 characters long (Protocol demands it)"
+	fi
+	if [ "${#WifiPassword}" -gt 63 ]; then
+		error 72 "Wifi passwords must be less than 64 characters long (How would you remember that anyways?)"
+	fi
+fi
 
 # Mount losetup
 if [ -v OSImage ]; then
@@ -313,6 +322,27 @@ else
 		embed_team_number Root
 	fi
 	lolog "Team Number: $TeamNumber"
+fi
+
+# Insert Wifi Configuration
+if [[ -z "$WifiSSID" && -z "$WifiPassword" ]]; then
+	warning "Incomplete or no Wifi configuration provided, keeping the default"
+	lolog "Wifi Configuration: DEFAULT"
+else
+	function embed_wifi_config() { # $1 = Partition name
+		sed -i "s/^ssid=.*/ssid=$WifiSSID/" "$(lo $1)/etc/hostapd.conf"
+		sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$WifiPassword/" "$(lo $1)/etc/hostapd.conf"
+		info "Added Wifi configuration [$WifiSSID] $WifiPassword to $1"
+	}
+	if [ -v OSImage ]; then
+		embed_wifi_config RootA
+		if [ ! -v NoRootB ]; then
+			embed_wifi_config RootB
+		fi
+	elif [ -v LLUpdate ]; then
+		embed_wifi_config Root
+	fi
+	lolog "Wifi Configuration: [$WifiSSID] $WifiPassword"
 fi
 
 # Done!
